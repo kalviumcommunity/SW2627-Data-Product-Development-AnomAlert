@@ -28,3 +28,13 @@ It includes a wide variety of authentication scenarios, such as:
 
 The dataset provides a realistic environment for evaluating different anomaly detection techniques and security analytics models.
 
+### Dataset Refinement
+
+The original dataset included `is_domain_controller_target` and `is_malicious` columns. We removed both, since they don't directly support the analysis we're building and `is_malicious` in particular acts as a ground-truth label we don't want the detection logic to depend on.
+
+With those columns gone, the dataset now only reflects normal authentication activity — there's no signal in it that represents anomalous behavior. To address this, we plan to generate synthetic anomalous activity and add it into the same dataset, so it contains both normal and anomalous behavior to analyze.
+
+### Planned Metric: Risk Score
+
+Once the dataset includes anomalous activity, the next step is to engineer a **Risk Score** metric from the available authentication fields (login patterns, failed attempts, device/host access, etc.). This metric will let us quantify how anomalous a user's behavior is and flag accounts that show signs of compromise, without relying on a pre-labeled "malicious" flag.
+
