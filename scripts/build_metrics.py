@@ -1,10 +1,8 @@
 """Build the per-user `metrics` table from `Raw_data`.
 
-Extends the PRD 7.1 6-metric set with 3 more, added to cover the 3 of the 8
-injected anomaly patterns (7.4) that the original 6 metrics have no signal
-for at all: new_device_login, data_volume_spike, dormant_reactivation.
-See compute_risk_scores.py for how these feed into risk_score (deviates
-from the PRD's literal 6-factor formula -- done deliberately, see there).
+Extends the PRD 7.1 6-metric set with 2 more (new_device_login, data_volume_spike)
+to cover injected anomaly patterns (7.4).
+See compute_risk_scores.py for how these feed into risk_score.
 """
 
 import sqlite3
@@ -52,19 +50,6 @@ def main():
     for uid, v in cur.fetchall():
         rows[uid]["bytes_spike_ratio"] = v
 
-    # dormant_reactivation signal: largest gap between a user's consecutive
-    # events. Raw_data has no date field (timestamps are mm:ss within a
-    # single ~1hr window), so event_id order is used as a time-order proxy.
-    cur.execute("""
-        WITH ordered AS (
-          SELECT user_id, event_id - LAG(event_id) OVER (PARTITION BY user_id ORDER BY event_id) AS gap
-          FROM Raw_data
-        )
-        SELECT user_id, MAX(gap) FROM ordered WHERE gap IS NOT NULL GROUP BY user_id
-    """)
-    for uid, v in cur.fetchall():
-        rows[uid]["reactivation_gap"] = v
-
     rows = list(rows.values())
 
     score_components = {
@@ -76,7 +61,6 @@ def main():
         "off_hours_ratio": "off_hours_score",
         "distinct_device_count": "new_device_score",
         "bytes_spike_ratio": "data_volume_score",
-        "reactivation_gap": "dormant_reactivation_score",
     }
 
     for comp, score_col in score_components.items():
@@ -97,7 +81,6 @@ def main():
       off_hours_ratio             REAL,
       distinct_device_count       INTEGER,
       bytes_spike_ratio           REAL,
-      reactivation_gap            INTEGER,
       failed_login_score          REAL,
       distinct_geo_score          REAL,
       mfa_bypass_score            REAL,
@@ -105,18 +88,17 @@ def main():
       lateral_movement_score      REAL,
       off_hours_score             REAL,
       new_device_score            REAL,
-      data_volume_score           REAL,
-      dormant_reactivation_score  REAL
+      data_volume_score           REAL
     )
     """)
 
     insert_cols = [
         "user_id", "failed_login_rate", "distinct_geo_count", "mfa_bypass_rate",
         "privilege_mismatch_count", "lateral_movement_rate", "off_hours_ratio",
-        "distinct_device_count", "bytes_spike_ratio", "reactivation_gap",
+        "distinct_device_count", "bytes_spike_ratio",
         "failed_login_score", "distinct_geo_score", "mfa_bypass_score",
         "privilege_mismatch_score", "lateral_movement_score", "off_hours_score",
-        "new_device_score", "data_volume_score", "dormant_reactivation_score",
+        "new_device_score", "data_volume_score",
     ]
     placeholders = ",".join("?" for _ in insert_cols)
     cur.executemany(

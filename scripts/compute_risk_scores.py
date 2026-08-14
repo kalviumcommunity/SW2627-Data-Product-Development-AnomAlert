@@ -1,15 +1,15 @@
 """Compute weighted risk scores for each user.
 
 DEVIATES FROM PRD 7.2 DELIBERATELY: the approved formula only weights 6
-factors, but the dataset has 8 injected anomaly patterns (7.4) and 3 of them
-(new_device_login, data_volume_spike, dormant_reactivation) have no signal
-in those 6 factors at all -- a user who only ever triggered those 3 could
-never score above Normal. So this extends to the 9 factors now in `metrics`
-(see build_metrics.py) and, since we're already off the approved formula,
-weights them equally (1/9 each) rather than guessing at relative severity.
-PRD's own Risks section (R1) calls the weights "heuristic; must be tuned
-against validation labels" -- equal weighting is the honest starting point
-for that tuning, done by evaluate_detection.py.
+factors, but the dataset has 8 injected anomaly patterns (7.4) and 2 of them
+(new_device_login, data_volume_spike) have no signal in those 6 factors at all
+-- a user who only ever triggered those 2 could never score above Normal.
+So this extends to the 8 factors now in `metrics` (see build_metrics.py) and,
+since we're already off the approved formula, weights them equally (1/8 each)
+rather than guessing at relative severity. PRD's own Risks section (R1) calls
+the weights "heuristic; must be tuned against validation labels" -- equal
+weighting is the honest starting point for that tuning, done by
+evaluate_detection.py.
 
 Writes: metrics.risk_score, metrics.risk_band
 
@@ -27,15 +27,14 @@ DB_PATH = "AnomAlert.sqlite"
 
 # score column already in `metrics` -> weight (equal, see module docstring)
 FACTORS = [
-    ("failed_login_score",         1 / 9),
-    ("distinct_geo_score",         1 / 9),
-    ("mfa_bypass_score",           1 / 9),
-    ("privilege_mismatch_score",   1 / 9),
-    ("lateral_movement_score",     1 / 9),
-    ("off_hours_score",            1 / 9),
-    ("new_device_score",           1 / 9),
-    ("data_volume_score",          1 / 9),
-    ("dormant_reactivation_score", 1 / 9),
+    ("failed_login_score",         1 / 8),
+    ("distinct_geo_score",         1 / 8),
+    ("mfa_bypass_score",           1 / 8),
+    ("privilege_mismatch_score",   1 / 8),
+    ("lateral_movement_score",     1 / 8),
+    ("off_hours_score",            1 / 8),
+    ("new_device_score",           1 / 8),
+    ("data_volume_score",          1 / 8),
 ]
 assert abs(sum(w for _, w in FACTORS) - 1.0) < 1e-9
 
@@ -71,8 +70,12 @@ def main():
     risk_scores = (score_matrix * weights).sum(axis=1)
     risk_bands = [band_for(s) for s in risk_scores]
 
-    cur.execute("ALTER TABLE metrics ADD COLUMN risk_score REAL")
-    cur.execute("ALTER TABLE metrics ADD COLUMN risk_band VARCHAR(16)")
+    cur.execute("PRAGMA table_info(metrics)")
+    existing_cols = [r[1] for r in cur.fetchall()]
+    if "risk_score" not in existing_cols:
+        cur.execute("ALTER TABLE metrics ADD COLUMN risk_score REAL")
+    if "risk_band" not in existing_cols:
+        cur.execute("ALTER TABLE metrics ADD COLUMN risk_band VARCHAR(16)")
     cur.executemany(
         "UPDATE metrics SET risk_score = ?, risk_band = ? WHERE user_id = ?",
         list(zip(risk_scores.tolist(), risk_bands, user_ids)),

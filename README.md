@@ -82,24 +82,59 @@ With labels stripped, the dataset was purely normal activity. To build and evalu
 **Columns never modified on any row:**
 `event_id` · `timestamp` · `user_id` · `user_role` · `src_host` · `src_subnet` · `auth_protocol` · `logon_type` · `client_ip` · `geo_city` · `mfa_used` · `session_id` · `session_duration_sec`
 
-> **Note on `dormant_reactivation`:** Raw_data has no calendar date field — `timestamp` covers only a ~1-hour mm:ss window. "30+ days of silence" cannot be represented. The largest `event_id` gaps per user are used as a time-order proxy. Flag this to the team before scoring.
+> **Note on `dormant_reactivation`:** `Raw_data` has no calendar date field — `timestamp` covers only a ~1-hour `mm:ss` window. "30+ days of silence" cannot be reliably measured. The artificial `reactivation_gap` proxy was removed from the scoring engine to avoid baseline noise, leaving 8 active telemetry metrics.
 
 > **Note on `rapid_lateral_movement`:** 2,646 rows tagged instead of the 3,000 target — limited by the finite pool of sessions with ≥3 events.
 
 ---
 
-## What's Next
+## Risk Scoring Pipeline
 
-Engineer a **Risk Score** from the available authentication fields — login patterns, failed attempts, device history, host access — without ever touching `anomaly_type`. The score quantifies how anomalous a user's behavior is. The injected labels exist only to evaluate how well the score separates signal from noise.
+AnomAlert derives a continuous **Risk Score (0–100)** for each user across **8 normalized behavioral metrics** without ever reading the evaluation-only `anomaly_type` column.
+
+### The 8 Behavioral Metrics
+
+| # | Metric | Derivation | Anomaly Target | Weight |
+|---|---|---|---|---:|
+| 1 | `failed_login_rate` | $\sum \text{failures} / \text{total events}$ | `brute_force` | 12.5% (1/8) |
+| 2 | `distinct_geo_count` | $\text{COUNT(DISTINCT geo\_country)}$ | `impossible_travel` | 12.5% (1/8) |
+| 3 | `off_hours_ratio` | $\sum \text{is\_off\_hours} / \text{total events}$ | `off_hours_access` | 12.5% (1/8) |
+| 4 | `privilege_mismatch_count` | $\sum (\text{privilege\_used} \neq \text{user\_role})$ | `privilege_escalation` | 12.5% (1/8) |
+| 5 | `distinct_device_count` | $\text{COUNT(DISTINCT device\_id)}$ | `new_device_login` | 12.5% (1/8) |
+| 6 | `bytes_spike_ratio` | $\max(\text{bytes}) / \text{avg}(\text{bytes})$ | `data_volume_spike` | 12.5% (1/8) |
+| 7 | `lateral_movement_rate` | $\text{COUNT(DISTINCT dst\_host)} / \text{COUNT(DISTINCT session\_id)}$ | `rapid_lateral_movement` | 12.5% (1/8) |
+| 8 | `mfa_bypass_rate` | $\sum (\text{mfa\_used} = 0) / \text{total events}$ | Credential / MFA posture | 12.5% (1/8) |
+
+Each raw metric is min-max scaled to 0–100 ($s_i$), and the composite score is calculated as:
+$$\text{Risk Score} = \sum_{i=1}^{8} \frac{1}{8} \times s_i$$
+
+### Risk Band Classification
+
+Continuous scores are categorized into 4 severity bands:
+
+| Risk Band | Score Range | User Count | % of Users | Status |
+|---|---|---:|---:|---|
+| **Normal** | 0 – 30 | **483** | 96.99% | Baseline Activity |
+| **Suspicious** | 31 – 60 | **12** | 2.41% | Elevated Monitoring |
+| **High Risk** | 61 – 80 | **3** | 0.60% | Active Investigation (`U0162`, `U0405`, `U0267`) |
+| **Critical** | 81 – 100 | **0** | 0.00% | Immediate Incident Response |
+| **Total** | | **498** | **100.0%** | |
 
 ---
 
-## Repository
+## Repository Structure
 
-| File | Description |
+| File / Directory | Description |
 |---|---|
-| `AnomAlert.sqlite` | Primary database — contains `Raw_data` with injected anomalies |
-| `RawData.sql` | SQL dump of the original raw dataset |
+| `AnomAlert.sqlite` | Primary SQLite database containing `Raw_data` (180,000 events) and `metrics` (498 user profiles) |
+| `RawData.sql` | SQL dump of the raw dataset |
 | `inject.sql` | Anomaly injection script (8 patterns, PRD §7.4) |
-| `parameter.md` | Detailed column descriptions |
-| `synthetic_auth_events_180000_processed.csv` | Source CSV from Kaggle |
+| `parameter.md` | Detailed column and parameter descriptions |
+| `requirements.txt` | Pinned Python dependencies (`streamlit`, `pandas`, `numpy`, `plotly`) |
+| `app.py` | Main Streamlit security monitoring dashboard |
+| `database/db.py` | Data access layer for loading metrics and events |
+| `components/` | Streamlit modular UI components (`kpi_cards`, `risk_distribution`, `top_users`, `user_details`) |
+| `scripts/build_metrics.py` | Computes the 8 per-user behavioral metrics and min-max normalized scores |
+| `scripts/compute_risk_scores.py` | Computes composite risk scores (1/8 equal weights) and assigns risk bands |
+| `scripts/evaluate_detection.py` | Evaluates detection recall against ground-truth injected labels |
+
