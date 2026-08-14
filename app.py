@@ -1,6 +1,7 @@
 import streamlit as st
 from database.db import load_metrics
 from components.kpi_cards import show_kpi_cards
+from components.top_users import show_top_users
 
 st.set_page_config(
     page_title="AnomAlert Dashboard",
@@ -27,6 +28,7 @@ with left:
 
 with right:
     st.subheader("Top 10 Risky Users")
+    show_top_users(df)
 
 st.divider()
 
