@@ -3,6 +3,7 @@ from database.db import load_metrics
 from components.kpi_cards import show_kpi_cards
 from components.top_users import show_top_users
 from components.user_details import show_user_details
+from components.risk_distribution import show_risk_distribution
 
 st.set_page_config(
     page_title="AnomAlert Dashboard",
@@ -26,6 +27,7 @@ left, middle, right = st.columns([1, 1.3, 1.3])
 
 with left:
     st.subheader("Risk Distribution")
+    show_risk_distribution(df)
 
 with middle:
     st.subheader("Top 10 Risky Users")
