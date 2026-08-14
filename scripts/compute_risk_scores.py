@@ -1,15 +1,15 @@
 """Compute weighted risk scores for each user.
 
 DEVIATES FROM PRD 7.2 DELIBERATELY: the approved formula only weights 6
-factors, but the dataset has 8 injected anomaly patterns (7.4) and 3 of them
-(new_device_login, data_volume_spike, dormant_reactivation) have no signal
-in those 6 factors at all -- a user who only ever triggered those 3 could
-never score above Normal. So this extends to the 9 factors now in `metrics`
-(see build_metrics.py) and, since we're already off the approved formula,
-weights them equally (1/9 each) rather than guessing at relative severity.
-PRD's own Risks section (R1) calls the weights "heuristic; must be tuned
-against validation labels" -- equal weighting is the honest starting point
-for that tuning, done by evaluate_detection.py.
+factors, but the dataset has 8 injected anomaly patterns (7.4) and 2 of them
+(new_device_login, data_volume_spike) have no signal in those 6 factors at all
+-- a user who only ever triggered those 2 could never score above Normal.
+So this extends to the 8 factors now in `metrics` (see build_metrics.py) and,
+since we're already off the approved formula, weights them equally (1/8 each)
+rather than guessing at relative severity. PRD's own Risks section (R1) calls
+the weights "heuristic; must be tuned against validation labels" -- equal
+weighting is the honest starting point for that tuning, done by
+evaluate_detection.py.
 
 Writes: metrics.risk_score, metrics.risk_band
 
