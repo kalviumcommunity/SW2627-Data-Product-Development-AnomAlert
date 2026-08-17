@@ -13,7 +13,6 @@ FACTORS = [
     ("off_hours_score", "off_hours_ratio", "Off-Hours Login"),
     ("new_device_score", "distinct_device_count", "New Device Usage"),
     ("data_volume_score", "bytes_spike_ratio", "Data Volume Spike"),
-    ("dormant_reactivation_score", "reactivation_gap", "Dormant Reactivation"),
 ]
 WEIGHT = 1 / len(FACTORS)
 
