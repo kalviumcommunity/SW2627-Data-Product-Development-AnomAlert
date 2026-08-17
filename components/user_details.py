@@ -1,9 +1,6 @@
 import streamlit as st
 
-# score column in `metrics` -> (raw column, display label)
-# mirrors scripts/compute_risk_scores.py's FACTORS (equal 1/9 weight each,
-# deliberately deviates from PRD 7.2's fixed 6-weight formula -- see that
-# script's docstring for why)
+# 8 score columns in `metrics` -> (raw column, display label)
 FACTORS = [
     ("failed_login_score", "failed_login_rate", "Failed Login Rate"),
     ("distinct_geo_score", "distinct_geo_count", "Multiple Countries"),
@@ -14,7 +11,7 @@ FACTORS = [
     ("new_device_score", "distinct_device_count", "New Device Usage"),
     ("data_volume_score", "bytes_spike_ratio", "Data Volume Spike"),
 ]
-WEIGHT = 1 / len(FACTORS)
+WEIGHT = 1.0 / len(FACTORS)
 
 
 def impact_level(normalized_score):

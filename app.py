@@ -3,8 +3,9 @@ from database.db import load_metrics
 from components.kpi_cards import show_kpi_cards
 from components.top_users import show_top_users
 from components.user_details import show_user_details
-from components.risk_formula import show_risk_formula
+from components.recent_events import show_recent_events
 from components.risk_distribution import show_risk_distribution
+from components.risk_formula import show_risk_formula
 
 st.set_page_config(
     page_title="AnomAlert Dashboard",
@@ -41,10 +42,11 @@ with right:
 st.divider()
 
 st.subheader("Recent Authentication Events")
+show_recent_events(st.session_state.get("selected_user"))
 
 st.divider()
 
-show_risk_formula()
+show_risk_formula(df)
 
 st.divider()
 

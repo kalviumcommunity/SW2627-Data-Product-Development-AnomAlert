@@ -1,23 +1,6 @@
-"""Compute weighted risk scores for each user.
-
-DEVIATES FROM PRD 7.2 DELIBERATELY: the approved formula only weights 6
-factors, but the dataset has 8 injected anomaly patterns (7.4) and 2 of them
-(new_device_login, data_volume_spike) have no signal in those 6 factors at all
--- a user who only ever triggered those 2 could never score above Normal.
-So this extends to the 8 factors now in `metrics` (see build_metrics.py) and,
-since we're already off the approved formula, weights them equally (1/8 each)
-rather than guessing at relative severity. PRD's own Risks section (R1) calls
-the weights "heuristic; must be tuned against validation labels" -- equal
-weighting is the honest starting point for that tuning, done by
-evaluate_detection.py.
+"""Compute weighted risk scores for each user based on the 8 behavioral metrics in `metrics`.
 
 Writes: metrics.risk_score, metrics.risk_band
-
-FR-05 explainability (per-factor observed value, score, contribution,
-impact level) is intentionally NOT persisted as a separate table -- every
-input it needs (raw value + normalized score per factor) is already a
-column on `metrics`, so the dashboard derives the "why was this user
-flagged" breakdown for whichever single user is selected at render time.
 """
 
 import sqlite3
@@ -25,7 +8,7 @@ import numpy as np
 
 DB_PATH = "AnomAlert.sqlite"
 
-# score column already in `metrics` -> weight (equal, see module docstring)
+# 8 behavioral metric factors engineered in `metrics` -> equal weight (1/8 = 12.5% each)
 FACTORS = [
     ("failed_login_score",         1 / 8),
     ("distinct_geo_score",         1 / 8),
@@ -38,9 +21,7 @@ FACTORS = [
 ]
 assert abs(sum(w for _, w in FACTORS) - 1.0) < 1e-9
 
-# PRD 7.3 gives integer buckets (0-30/31-60/61-80/81+) for a continuous 0-100
-# score; treated here as upper bounds so no real-valued score falls in a gap
-# between e.g. 60 and 61.
+# Risk band thresholds
 RISK_BAND_MAX = [
     (30, "Normal"),
     (60, "Suspicious"),
