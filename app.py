@@ -6,6 +6,7 @@ from components.user_details import show_user_details
 from components.risk_formula import show_risk_formula
 from components.risk_distribution import show_risk_distribution
 from components.sidebar import show_sidebar
+from components.recent_events import show_recent_events
 
 st.set_page_config(
     page_title="AnomAlert Dashboard",
@@ -44,6 +45,7 @@ with right:
 st.divider()
 
 st.subheader("Recent Authentication Events")
+show_recent_events(st.session_state.get("selected_user"))
 
 st.divider()
 
