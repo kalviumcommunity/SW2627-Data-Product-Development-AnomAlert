@@ -2,10 +2,17 @@
 
 Extends the PRD 7.1 6-metric set with 2 more (new_device_login, data_volume_spike)
 to cover injected anomaly patterns (7.4).
-See compute_risk_scores.py for how these feed into risk_score.
+
+Calls compute_risk_scores.main() at the end so metrics.risk_score/risk_band
+always exist right after this script runs -- the dashboard (database/db.py)
+reads them unconditionally, so a `metrics` table without them (e.g. someone
+reruns just this script after a data change) would otherwise crash the UI
+with a KeyError until compute_risk_scores.py was remembered and run too.
 """
 
 import sqlite3
+
+import compute_risk_scores
 
 DB_PATH = "AnomAlert.sqlite"
 
@@ -110,6 +117,8 @@ def main():
     cur.execute("SELECT COUNT(*) FROM metrics")
     print("metrics rows:", cur.fetchone()[0])
     conn.close()
+
+    compute_risk_scores.main()
 
 
 if __name__ == "__main__":
