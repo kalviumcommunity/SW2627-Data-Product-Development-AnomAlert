@@ -20,6 +20,7 @@ chronological ordering for this dataset.
 import streamlit as st
 import pandas as pd
 from database.db import load_recent_events
+from components.badges import result_badge
 
 # Number of rows shown in collapsed vs expanded view
 LIMIT_DEFAULT  = 10
@@ -37,6 +38,38 @@ def _format_events(df: pd.DataFrame) -> pd.DataFrame:
         "geo_country": "Location",
         "client_ip":   "IP Address",
     })[["Time (MM:SS)", "User ID", "Event Type", "Result", "Device", "Location", "IP Address"]]
+
+
+def _render_table(df: pd.DataFrame) -> None:
+    """Render events as an HTML table so the Result column can use badges."""
+    cols = df.columns.tolist()
+    header_html = "".join(
+        f'<th style="text-align:left;padding:8px 12px;font-size:0.78rem;'
+        f'color:var(--secondary-text-color);border-bottom:1px solid rgba(128,128,128,0.2);">{c}</th>'
+        for c in cols
+    )
+    rows_html = ""
+    for _, r in df.iterrows():
+        cells = []
+        for c in cols:
+            value = r[c]
+            if c == "Result":
+                cells.append(f'<td style="padding:8px 12px;">{result_badge(value)}</td>')
+            else:
+                cells.append(f'<td style="padding:8px 12px;font-size:0.85rem;color:var(--text-color);">{value}</td>')
+        rows_html += f"<tr>{''.join(cells)}</tr>"
+
+    st.markdown(
+        f"""
+        <div style="overflow-x:auto;">
+          <table style="width:100%;border-collapse:collapse;">
+            <thead><tr>{header_html}</tr></thead>
+            <tbody>{rows_html}</tbody>
+          </table>
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
 
 
 def show_recent_events(selected_user: str = None) -> None:
@@ -84,11 +117,7 @@ def show_recent_events(selected_user: str = None) -> None:
         "from the raw dataset — no calendar date is stored in Raw_data."
     )
 
-    st.dataframe(
-        _format_events(events_df),
-        use_container_width=True,
-        hide_index=True,
-    )
+    _render_table(_format_events(events_df))
 
     # ── View All / Show Less toggle ───────────────────────────────────────────
     btn_label = "⬆ Show Less" if st.session_state.rae_expanded else "View All Events →"
