@@ -51,6 +51,3 @@ st.divider()
 
 show_risk_formula()
 
-st.divider()
-
-st.subheader("User Investigation")
