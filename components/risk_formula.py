@@ -18,22 +18,29 @@ WEIGHT = 1 / len(FACTOR_LABELS)
 
 
 def show_risk_formula():
-    st.subheader("Risk Score Calculation (How it works)")
-    st.caption("Risk Score is calculated using the weighted formula below")
+    st.markdown('<div class="section-heading">Risk Score Calculation (How it works)</div>', unsafe_allow_html=True)
 
-    st.latex(r"\text{Risk Score} = \sum_{i=1}^{n} W_i \times S_i")
+    formula_col, table_col = st.columns([1.4, 1])
 
-    st.markdown(
-        f"""
-- **Wᵢ** = weight of risk factor *i* (importance of the factor)
-- **Sᵢ** = normalized score of risk factor *i* (0-100, based on observed behaviour)
-- **n** = total number of risk factors ({len(FACTOR_LABELS)})
+    with formula_col:
+        st.caption("Risk Score is calculated using the weighted and normalized formula")
+        with st.container(border=True):
+            st.latex(r"\text{Risk Score} = \sum_{i=1}^{n} W_i \times S_i")
+
+        st.markdown(
+            f"""
+Where,
+- **Wᵢ** = Weight of risk factor *i* (importance of the factor)
+- **Sᵢ** = Normalized score of risk factor *i* (0-100, based on observed behaviour)
+- **n** = Total number of risk factors ({len(FACTOR_LABELS)})
 """
-    )
+        )
 
-    weight_table = [
-        {"Risk Factor": label, "Weight (Wᵢ)": f"{WEIGHT:.1%}"}
-        for label in FACTOR_LABELS
-    ]
-    weight_table.append({"Risk Factor": "Total", "Weight (Wᵢ)": "100%"})
-    st.table(weight_table)
+    with table_col:
+        st.markdown("<div style='height:28px;'></div>", unsafe_allow_html=True)
+        weight_table = [
+            {"Risk Factor": label, "Weight (Wᵢ)": f"{WEIGHT:.1%}"}
+            for label in FACTOR_LABELS
+        ]
+        weight_table.append({"Risk Factor": "Total", "Weight (Wᵢ)": "100%"})
+        st.dataframe(weight_table, use_container_width=True, hide_index=True)

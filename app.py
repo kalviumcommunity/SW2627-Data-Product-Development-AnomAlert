@@ -6,6 +6,7 @@ from components.user_details import show_user_details
 from components.risk_formula import show_risk_formula
 from components.risk_distribution import show_risk_distribution
 from components.recent_events import show_recent_events
+from components.risk_legend import show_risk_legend
 from components.filters import filters, apply_filters
 from components.sidebar import show_sidebar
 
@@ -18,21 +19,67 @@ st.set_page_config(
 st.markdown("""
 <style>
 
-/* Filter Bar */
-
-.filter-bar{
-    background:#FFFFFF;
-    border:1px solid #E5E7EB;
-    border-radius:14px;
-    padding:18px 20px 6px;
-    margin-bottom:20px;
+/* Section heading -- plain bold text, no default Streamlit top margin so it
+   sits flush with the top of its bordered container. */
+.section-heading{
+    font-size:1.05rem;
+    font-weight:700;
+    color:var(--text-color);
+    margin:0 0 14px 0;
 }
 
-.filter-bar [data-testid="stSelectbox"] label,
-.filter-bar [data-testid="stTextInput"] label{
+/* KPI stat cards */
+.stat-card{
+    display:flex;
+    align-items:flex-start;
+    gap:14px;
+}
+.stat-icon{
+    width:44px;
+    height:44px;
+    border-radius:10px;
+    background:rgba(128,128,128,0.08);
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    color:var(--text-color);
+    flex-shrink:0;
+}
+.stat-label{
+    font-size:0.85rem;
+    font-weight:600;
+    color:var(--text-color);
+    margin:2px 0 0 0;
+}
+.stat-value{
+    font-size:1.7rem;
+    font-weight:700;
+    color:var(--text-color);
+    margin:6px 0 2px 0;
+    line-height:1.1;
+}
+.stat-caption{
+    font-size:0.78rem;
+    color:var(--secondary-text-color);
+    margin:0;
+}
+
+/* Table-style column headers/cells: truncate instead of breaking mid-word
+   when a narrow column (e.g. sidebar expanded, smaller viewport) can't fit
+   the label at full width. */
+.col-label{
+    display:block;
+    white-space:nowrap;
+    overflow:hidden;
+    text-overflow:ellipsis;
+}
+
+/* Filter bar: bold, dark labels on the selectboxes/text input */
+.st-key-filter_bar [data-testid="stSelectbox"] label,
+.st-key-filter_bar [data-testid="stTextInput"] label{
     font-size:13px;
     font-weight:600;
-    color:#374151;
+    color:var(--text-color);
 }
 
 </style>
@@ -40,55 +87,36 @@ st.markdown("""
 
 show_sidebar()
 
-st.title("🛡️ AnomAlert Dashboard")
-st.caption("Real-Time Security Risk Monitoring")
-
-st.divider()
-
 df = load_metrics()
 
-st.subheader("📊 Security Overview")
 show_kpi_cards(df)
 
-selections = filters(df)
+with st.container(key="filter_bar", border=True):
+    selections = filters(df)
 df = apply_filters(df, selections)
-
-st.divider()
 
 left, middle, right = st.columns([1, 1.3, 1.3])
 
 with left:
-    st.subheader("Risk Distribution")
-    show_risk_distribution(df)
+    with st.container(border=True):
+        st.markdown('<div class="section-heading">Risk Score Distribution</div>', unsafe_allow_html=True)
+        show_risk_distribution(df)
 
 with middle:
-    st.subheader("Top 10 Risky Users")
-    show_top_users(df)
+    with st.container(border=True):
+        st.markdown('<div class="section-heading">Top 10 Risky Users</div>', unsafe_allow_html=True)
+        show_top_users(df)
 
 with right:
     if st.session_state.get("selected_user"):
-        show_user_details(df, st.session_state.selected_user)
+        with st.container(border=True):
+            show_user_details(df, st.session_state.selected_user)
 
-st.divider()
+with st.container(border=True):
+    st.markdown('<div class="section-heading">Recent Authentication Events</div>', unsafe_allow_html=True)
+    show_recent_events(st.session_state.get("selected_user"))
 
-st.subheader("Recent Authentication Events")
-show_recent_events(st.session_state.get("selected_user"))
+with st.container(border=True):
+    show_risk_formula()
 
-st.divider()
-
-show_risk_formula()
-
-st.divider()
-
-st.subheader("User Investigation")
-
-all_users = sorted(df["user_id"].dropna().unique().tolist())
-searched_user = st.selectbox(
-    "Search or select a user to investigate",
-    options=[""] + all_users,
-    format_func=lambda x: "Type or select a User ID..." if x == "" else x,
-)
-
-if searched_user:
-    st.session_state.selected_user = searched_user
-    show_user_details(df, searched_user)
+show_risk_legend()

@@ -30,7 +30,7 @@ def filters(df):
     with col5:
         search_user = st.text_input(
             "Search User",
-            placeholder="🔍  Search by User ID",
+            placeholder="Search by User ID",
             key="filter_search_user",
         ).strip()
 
