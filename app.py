@@ -5,12 +5,16 @@ from components.top_users import show_top_users
 from components.user_details import show_user_details
 from components.risk_formula import show_risk_formula
 from components.risk_distribution import show_risk_distribution
+from components.sidebar import show_sidebar
+from components.recent_events import show_recent_events
 
 st.set_page_config(
     page_title="AnomAlert Dashboard",
     page_icon="🛡️",
     layout="wide"
 )
+
+show_sidebar()
 
 st.title("🛡️ AnomAlert Dashboard")
 st.caption("Real-Time Security Risk Monitoring")
@@ -41,11 +45,9 @@ with right:
 st.divider()
 
 st.subheader("Recent Authentication Events")
+show_recent_events(st.session_state.get("selected_user"))
 
 st.divider()
 
 show_risk_formula()
 
-st.divider()
-
-st.subheader("User Investigation")
