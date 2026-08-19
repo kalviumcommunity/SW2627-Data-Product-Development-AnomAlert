@@ -1,140 +1,186 @@
-# AnomAlert
+<div align="center">
+  <img src="https://img.icons8.com/color/96/000000/shield.png" alt="AnomAlert Logo">
+  <h1>AnomAlert</h1>
+  <p><b>Behavioral Risk Scoring for Enterprise Authentication Events</b></p>
+  <p><i>Detect what others miss. Turn raw telemetry into proactive risk intelligence.</i></p>
 
-Detect what others miss.
-
----
-
-## What It Is
-
-AnomAlert is a cybersecurity data product that surfaces behavioral anomalies in enterprise authentication logs — brute-force attempts, impossible travel, privilege escalation, lateral movement, and more. It turns raw login events into a quantified Risk Score, giving security teams something they can act on.
-
----
-
-## The Problem
-
-Authentication logs are abundant. Insight is not.
-
-Traditional SIEM tools surface events. AnomAlert surfaces *patterns* — the subtle behavioral signatures that appear before an account is compromised. No pre-labeled `is_malicious` flag. No cheating. Just signal engineered from the raw data itself.
+  [![Python](https://img.shields.io/badge/Python-3.9+-blue.svg)](https://www.python.org/)
+  [![Streamlit](https://img.shields.io/badge/Streamlit-1.28+-red.svg)](https://streamlit.io/)
+  [![SQLite](https://img.shields.io/badge/SQLite-Database-lightgrey.svg)](https://www.sqlite.org/)
+  [![Pandas](https://img.shields.io/badge/Pandas-Data%20Processing-150458.svg)](https://pandas.pydata.org/)
+  [![Plotly](https://img.shields.io/badge/Plotly-Interactive%20Charts-3F4F75.svg)](https://plotly.com/)
+</div>
 
 ---
 
-## Dataset
-
-**180,000 synthetic enterprise authentication events** — sourced from a research-grade Kaggle dataset and refined for this product.
-
-→ [View on Kaggle](https://www.kaggle.com/datasets/danielpeng1995/synthetic-enterprise-auth-logs)
-
-### Columns
-
-| Column | Type | Description |
-|---|---|---|
-| `event_id` | INTEGER | Unique identifier for each authentication event |
-| `timestamp` | VARCHAR | Time of the event (mm:ss within a ~1-hr window) |
-| `user_id` | VARCHAR | User identifier (U0001–U0500) |
-| `user_role` | VARCHAR | `standard` or `admin` |
-| `src_host` | VARCHAR | Source workstation initiating the request |
-| `src_subnet` | VARCHAR | Network subnet of the source host |
-| `dst_host` | VARCHAR | Destination server or domain controller |
-| `auth_protocol` | VARCHAR | `Kerberos` or `NTLM` |
-| `logon_type` | VARCHAR | Interactive / Network / Service / Remote Interactive |
-| `auth_result` | VARCHAR | `Success` or `Failure` |
-| `client_ip` | VARCHAR | IP address of the authenticating client |
-| `geo_country` | VARCHAR | Country inferred from client IP |
-| `geo_city` | VARCHAR | City inferred from client IP |
-| `device_id` | VARCHAR | Device fingerprint of the authenticating endpoint |
-| `mfa_used` | BOOLEAN | Whether MFA was used |
-| `session_id` | VARCHAR | Session grouping identifier |
-| `session_duration_sec` | INTEGER | Duration of the authenticated session |
-| `bytes_transferred` | INTEGER | Data volume transferred during the session |
-| `failed_attempts_before_success` | INTEGER | Consecutive failures before a successful login |
-| `is_off_hours` | BOOLEAN | Whether the event occurred outside business hours |
-| `privilege_used` | VARCHAR | Privilege level exercised (`standard` or `admin`) |
-| `anomaly_type` | VARCHAR | **Evaluation label only** — never read by scoring logic |
-
-### What Was Removed
-
-The original dataset included `is_domain_controller_target` and `is_malicious`. Both were dropped — the first was redundant, and the second is exactly the ground truth the scoring engine must derive on its own.
+## 📖 Table of Contents
+- [Overview](#-overview)
+- [The Problem](#-the-problem)
+- [Key Features](#-key-features)
+- [Behavioral Risk Scoring Engine](#-behavioral-risk-scoring-engine)
+- [Dataset & Anomaly Injection](#-dataset--anomaly-injection)
+- [Installation & Setup](#-installation--setup)
+- [Project Structure](#-project-structure)
+- [Future Scope](#-future-scope)
 
 ---
 
-## Anomaly Injection
+## 🎯 Overview
 
-With labels stripped, the dataset was purely normal activity. To build and evaluate a detector, we needed ground truth — synthetic anomalies embedded directly into the data, tagged only for evaluation.
+**AnomAlert** is a cybersecurity data product that transforms raw authentication telemetry into actionable, per-user risk intelligence. Rather than surfacing thousands of isolated, single-event alerts, AnomAlert evaluates the **continuous behavioral sequence** of every user to proactively identify accounts trending toward compromise.
 
-**`inject.sql`** injects 8 behavioral anomaly patterns (per PRD §7.4) into the `Raw_data` table. Each affected row receives an `anomaly_type` label. The scoring engine must never read this column.
-
-### Injection Results
-
-**180,000 total rows · 23,523 changed (13.07%) · 156,477 unchanged (86.93%)**
-
-| Anomaly | Rows | % | What Changed |
-|---|---:|---:|---|
-| `brute_force` | 2,974 | 1.65% | `failed_attempts_before_success` → 8–20, `auth_result → Success` |
-| `impossible_travel` | 2,971 | 1.65% | `geo_country` flipped to a different country from prior event |
-| `off_hours_access` | 3,000 | 1.67% | `is_off_hours → 1` (standard users only) |
-| `privilege_escalation` | 3,000 | 1.67% | `privilege_used → admin`, `dst_host → DC-01` (standard users only) |
-| `new_device_login` | 2,972 | 1.65% | `device_id → NEWDEV-<uid>-<eid>` (globally unique) |
-| `dormant_reactivation` | 2,988 | 1.66% | `anomaly_type` only *(approximation — no calendar date available)* |
-| `data_volume_spike` | 2,972 | 1.65% | `bytes_transferred → 10× user's own average` (~27.9 MB vs ~2.7 MB normal) |
-| `rapid_lateral_movement` | 2,646 | 1.47% | `dst_host → SRV-100…119` (many hosts within a session) |
-| Normal | 156,477 | 86.93% | — |
-
-**Columns never modified on any row:**
-`event_id` · `timestamp` · `user_id` · `user_role` · `src_host` · `src_subnet` · `auth_protocol` · `logon_type` · `client_ip` · `geo_city` · `mfa_used` · `session_id` · `session_duration_sec`
-
-> **Note on `dormant_reactivation`:** `Raw_data` has no calendar date field — `timestamp` covers only a ~1-hour `mm:ss` window. "30+ days of silence" cannot be reliably measured. The artificial `reactivation_gap` proxy was removed from the scoring engine to avoid baseline noise, leaving 8 active telemetry metrics.
-
-> **Note on `rapid_lateral_movement`:** 2,646 rows tagged instead of the 3,000 target — limited by the finite pool of sessions with ≥3 events.
+Designed specifically for **Security Operations Center (SOC) Analysts**, it calculates a transparent, weighted-and-normalized score with explainable reasons, presented through an intuitive Streamlit dashboard.
 
 ---
 
-## Risk Scoring Pipeline
+## 🚨 The Problem
 
-AnomAlert derives a continuous **Risk Score (0–100)** for each user across **8 normalized behavioral metrics** without ever reading the evaluation-only `anomaly_type` column.
+Authentication logs are abundant, but insight is scarce.
+Traditional reports and SIEM tools treat login events independently. A single failed login or an off-hours access may not indicate a threat. However, a sequence such as:
 
-### The 8 Behavioral Metrics
+> **Repeated failed logins → Successful login → New device → Unusual location**
 
-| # | Metric | Derivation | Anomaly Target | Weight |
-|---|---|---|---|---:|
-| 1 | `failed_login_rate` | $\sum \text{failures} / \text{total events}$ | `brute_force` | 12.5% (1/8) |
-| 2 | `distinct_geo_count` | $\text{COUNT(DISTINCT geo\_country)}$ | `impossible_travel` | 12.5% (1/8) |
-| 3 | `off_hours_ratio` | $\sum \text{is\_off\_hours} / \text{total events}$ | `off_hours_access` | 12.5% (1/8) |
-| 4 | `privilege_mismatch_count` | $\sum (\text{privilege\_used} \neq \text{user\_role})$ | `privilege_escalation` | 12.5% (1/8) |
-| 5 | `distinct_device_count` | $\text{COUNT(DISTINCT device\_id)}$ | `new_device_login` | 12.5% (1/8) |
-| 6 | `bytes_spike_ratio` | $\max(\text{bytes}) / \text{avg}(\text{bytes})$ | `data_volume_spike` | 12.5% (1/8) |
-| 7 | `lateral_movement_rate` | $\text{COUNT(DISTINCT dst\_host)} / \text{COUNT(DISTINCT session\_id)}$ | `rapid_lateral_movement` | 12.5% (1/8) |
-| 8 | `mfa_bypass_rate` | $\sum (\text{mfa\_used} = 0) / \text{total events}$ | Credential / MFA posture | 12.5% (1/8) |
-
-Each raw metric is min-max scaled to 0–100 ($s_i$), and the composite score is calculated as:
-$$\text{Risk Score} = \sum_{i=1}^{8} \frac{1}{8} \times s_i$$
-
-### Risk Band Classification
-
-Continuous scores are categorized into 4 severity bands:
-
-| Risk Band | Score Range | User Count | % of Users | Status |
-|---|---|---:|---:|---|
-| **Normal** | 0 – 30 | **483** | 96.99% | Baseline Activity |
-| **Suspicious** | 31 – 60 | **12** | 2.41% | Elevated Monitoring |
-| **High Risk** | 61 – 80 | **3** | 0.60% | Active Investigation (`U0162`, `U0405`, `U0267`) |
-| **Critical** | 81 – 100 | **0** | 0.00% | Immediate Incident Response |
-| **Total** | | **498** | **100.0%** | |
+...is a classic pre-compromise behavioral pattern. SOC Analysts suffer from **alert fatigue** trying to manually correlate these events. AnomAlert automates this correlation, eliminating the noise and accelerating threat detection.
 
 ---
 
-## Repository Structure
+## ✨ Key Features
 
-| File / Directory | Description |
-|---|---|
-| `AnomAlert.sqlite` | Primary SQLite database containing `Raw_data` (180,000 events) and `metrics` (498 user profiles) |
-| `RawData.sql` | SQL dump of the raw dataset |
-| `inject.sql` | Anomaly injection script (8 patterns, PRD §7.4) |
-| `parameter.md` | Detailed column and parameter descriptions |
-| `requirements.txt` | Pinned Python dependencies (`streamlit`, `pandas`, `numpy`, `plotly`) |
-| `app.py` | Main Streamlit security monitoring dashboard |
-| `database/db.py` | Data access layer for loading metrics and events |
-| `components/` | Streamlit modular UI components (`kpi_cards`, `risk_distribution`, `top_users`, `user_details`) |
-| `scripts/build_metrics.py` | Computes the 8 per-user behavioral metrics and min-max normalized scores |
-| `scripts/compute_risk_scores.py` | Computes composite risk scores (1/8 equal weights) and assigns risk bands |
-| `scripts/evaluate_detection.py` | Evaluates detection recall against ground-truth injected labels |
+- **🛡️ Per-User Behavioral Profiling**: Rolls up thousands of authentication events into a continuous risk view per user.
+- **🧮 Explainable Risk Scoring**: A fully transparent, rule-based scoring engine. Every point is traceable to a specific behavioral anomaly metric.
+- **🚥 Threshold Alerting**: Automatic banding of users into **Normal**, **Suspicious**, **High Risk**, and **Critical** categories.
+- **📊 Interactive SOC Dashboard**: A Streamlit-based UI for monitoring overall authentication statistics, visualizing risk distribution, investigating top risky users, and drilling down into specific user behavior.
+- **🔎 Deep Investigation**: View recent authentication events for any selected user, including device, location, IP address, and logon type.
 
+---
+
+## 🧠 Behavioral Risk Scoring Engine
+
+AnomAlert derives a continuous **Risk Score (0–100)** for each user based on **8 normalized behavioral metrics**. The system is completely blind to any synthetic anomaly labels, deriving ground truth entirely from raw metrics.
+
+| # | Behavioral Metric | Detection Target | Weight |
+|---|---|---|:---:|
+| 1 | **`failed_login_rate`** | Brute-force attempts | 12.5% |
+| 2 | **`distinct_geo_count`** | Impossible travel | 12.5% |
+| 3 | **`off_hours_ratio`** | Unusual login timing (Off-hours access) | 12.5% |
+| 4 | **`privilege_mismatch_count`**| Privilege escalation (Standard vs Admin) | 12.5% |
+| 5 | **`distinct_device_count`** | First-ever login from unseen device | 12.5% |
+| 6 | **`bytes_spike_ratio`** | Data volume exfiltration spike | 12.5% |
+| 7 | **`lateral_movement_rate`** | Rapid host-hopping | 12.5% |
+| 8 | **`mfa_bypass_rate`** | Weak authentication posture | 12.5% |
+
+### 🧮 Score Calculation
+Each raw metric is min-max scaled (normalized) from 0 to 100 ($s_i$). The composite Risk Score is a weighted average:
+
+$$ \text{Risk Score} = \sum_{i=1}^{8} (0.125 \times s_i) $$
+
+### 🚦 Risk Bands
+Scores are evaluated and users are placed into severity bands to prioritize investigation:
+- **0–30: Normal** (Baseline Activity)
+- **31–60: Suspicious** (Elevated Monitoring)
+- **61–80: High Risk** (Active Investigation)
+- **81+: Critical** (Immediate Incident Response)
+
+---
+
+## 💾 Dataset & Anomaly Injection
+
+We utilized **180,000 synthetic enterprise authentication events** across 500 users (U0001–U0500).
+
+To rigorously test our scoring engine, we synthetically injected **8 distinct behavioral anomaly patterns** into ~13% of the dataset:
+1. `brute_force`
+2. `impossible_travel`
+3. `off_hours_access`
+4. `privilege_escalation`
+5. `new_device_login`
+6. `dormant_reactivation`
+7. `data_volume_spike`
+8. `rapid_lateral_movement`
+
+**Note**: The system operates completely blind to these labels. They are used **exclusively for evaluating detection recall**.
+
+---
+
+## 🚀 Installation & Setup
+
+Get the AnomAlert pipeline running in under 5 minutes.
+
+### 1. Clone the repository
+```bash
+git clone https://github.com/your-org/AnomAlert.git
+cd AnomAlert
+```
+
+### 2. Set up the Python Environment
+Ensure you have Python 3.9+ installed. Create and activate a virtual environment:
+```bash
+python -m venv .venv
+source .venv/bin/activate  # On Windows use: .venv\Scripts\activate
+```
+
+### 3. Install Dependencies
+```bash
+pip install -r requirements.txt
+```
+
+### 4. Build Metrics & Risk Scores
+Run the data pipeline to aggregate events and calculate risk scores for all users:
+```bash
+python scripts/build_metrics.py
+```
+*(This script will process the raw SQLite data, build the `metrics` table, and automatically execute `compute_risk_scores.py`.)*
+
+### 5. Launch the Dashboard
+Fire up the interactive Streamlit SOC dashboard:
+```bash
+streamlit run app.py
+```
+*The application will be accessible at `http://localhost:8501`.*
+
+---
+
+## 📂 Project Structure
+
+```text
+AnomAlert/
+│
+├── AnomAlert.sqlite             # Primary database with raw events & metrics
+├── RawData.sql                  # Original dataset schema and dump
+├── inject.sql                   # Synthetic anomaly injection script
+├── requirements.txt             # Project dependencies
+├── parameter.md                 # Detailed parameter documentation
+├── app.py                       # Main Streamlit Dashboard Application
+│
+├── database/
+│   └── db.py                    # SQLite data access layer
+│
+├── components/                  # Modular UI components for Streamlit
+│   ├── filters.py               # Time and User filters
+│   ├── kpi_cards.py             # Top-level statistics
+│   ├── recent_events.py         # Drill-down authentication log viewer
+│   ├── risk_distribution.py     # Pie chart for risk banding
+│   ├── risk_formula.py          # Explainability & Math display
+│   ├── risk_legend.py           # Band color reference
+│   ├── sidebar.py               # Navigation and global context
+│   ├── top_users.py             # Table of highest risk users
+│   └── user_details.py          # Radar chart and specific anomaly factors
+│
+└── scripts/                     # Data Pipeline & Scoring Engine
+    ├── build_metrics.py         # Aggregates 8 behavioral metrics
+    ├── compute_risk_scores.py   # Normalizes metrics and applies risk bands
+    └── evaluate_detection.py    # Validates engine recall against injected anomalies
+```
+
+---
+
+## 🔮 Future Scope
+
+- **Hybrid ML Layer**: Integration of Isolation Forest and Autoencoders for detecting entirely novel, unseen anomaly behaviors.
+- **Real-time Enrichment**: Live ingestion with Threat Intelligence feeds and Geo-IP APIs to augment streaming telemetry.
+- **SIEM & SOAR Integration**: Automated incident ticketing and direct integration with remediation platforms.
+
+---
+
+<div align="center">
+  <i>Built for Security Operations Centers by the AnomAlert Team.</i>
+</div>
