@@ -6,6 +6,10 @@ from components.badges import band_badge
 def show_top_users(df):
     top10 = df.sort_values("risk_score", ascending=False).head(10).reset_index(drop=True)
 
+    if top10.empty:
+        st.caption("No users match the current filters.")
+        return
+
     if not st.session_state.get("selected_user"):
         st.session_state.selected_user = top10.iloc[0]["user_id"]  # default: top-ranked user
 
