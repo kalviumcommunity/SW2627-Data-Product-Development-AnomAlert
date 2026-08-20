@@ -54,6 +54,15 @@ Traditional reports and SIEM tools treat login events independently. A single fa
 
 ---
 
+## 📸 Dashboard Screenshots
+
+![Dashboard Overview](assets/overview.jpeg)
+*Overview of authentication statistics, risk distribution, and top risky users.*
+
+![Dashboard Details](assets/events.jpeg)
+*Detailed view of recent authentication events and risk score calculation formula.*
+
+---
 ## 🧠 Behavioral Risk Scoring Engine
 
 AnomAlert derives a continuous **Risk Score (0–100)** for each user based on **8 normalized behavioral metrics**. The system is completely blind to any synthetic anomaly labels, deriving ground truth entirely from raw metrics.
@@ -73,7 +82,6 @@ AnomAlert derives a continuous **Risk Score (0–100)** for each user based on *
 Each raw metric is min-max scaled (normalized) from 0 to 100 ($s_i$). The composite Risk Score is a weighted average:
 
 $$ \text{Risk Score} = \sum_{i=1}^{8} (0.125 \times s_i) $$
-
 ### 🚦 Risk Bands
 Scores are evaluated and users are placed into severity bands to prioritize investigation:
 - **0–30: Normal** (Baseline Activity)
