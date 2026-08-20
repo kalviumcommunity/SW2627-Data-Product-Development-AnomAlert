@@ -82,7 +82,6 @@ AnomAlert derives a continuous **Risk Score (0–100)** for each user based on *
 Each raw metric is min-max scaled (normalized) from 0 to 100 ($s_i$). The composite Risk Score is a weighted average:
 
 $$ \text{Risk Score} = \sum_{i=1}^{8} (0.125 \times s_i) $$
-
 ### 🚦 Risk Bands
 Scores are evaluated and users are placed into severity bands to prioritize investigation:
 - **0–30: Normal** (Baseline Activity)
