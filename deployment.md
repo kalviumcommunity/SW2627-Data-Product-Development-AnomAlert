@@ -3,7 +3,7 @@
 ## Run Locally
 ```bash
 python -m venv venv
-source venv/Scripts/activate
+source venv/Scripts/activate   # Windows Git Bash
 pip install -r requirements.txt
 streamlit run app.py
 ```
