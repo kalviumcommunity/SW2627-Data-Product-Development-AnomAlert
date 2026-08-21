@@ -3,7 +3,7 @@
 ## Run Locally
 ```bash
 python -m venv venv
-source venv/Scripts/activate   # Windows Git Bash
+source venv/Scripts/activate
 pip install -r requirements.txt
 streamlit run app.py
 ```
@@ -33,6 +33,15 @@ docker build -t anomalert .
 docker run -p 8501:8501 anomalert
 ```
 Deploy the image to Render/Railway/Fly.io/etc.
+
+## Known Limitations
+- Filter bar: **Risk Band** and **Search User** actually filter the data. **User Role**, **Country**, and **Time Range** are UI-only for now — the dataset has no columns backing them yet.
+- "Recent Authentication Events" shows the last N rows of the dataset as-is, not a true time-ordered feed, since there's no timestamp column yet.
+
+## How to Test This PR
+1. Follow "Run Locally" above.
+2. Confirm all sections load with no errors: KPI cards, filter bar, Risk Distribution, Top 10 Risky Users, Recent Authentication Events, Risk Formula, User Investigation search.
+3. Try the Risk Band filter and Search User box — confirm the tables below update accordingly.
 
 ## Checklist
 - [ ] `requirements.txt` up to date
