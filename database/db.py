@@ -5,6 +5,7 @@ import pandas as pd
 DB_NAME = "AnomAlert.sqlite"
 
 
+@st.cache_data
 def load_metrics():
     conn = sqlite3.connect(DB_NAME)
 
