@@ -17,6 +17,7 @@
 - [Overview](#-overview)
 - [The Problem](#-the-problem)
 - [Key Features](#-key-features)
+- [Dashboard Screenshots](#-dashboard-screenshots)
 - [Behavioral Risk Scoring Engine](#-behavioral-risk-scoring-engine)
 - [Dataset & Anomaly Injection](#-dataset--anomaly-injection)
 - [Installation & Setup](#-installation--setup)
